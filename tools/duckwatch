@@ -1,0 +1,56 @@
+#!/bin/sh
+#
+# duckwatch -- dumb "IDE-like" sql testing
+# usage: duckwatch [sql-file] [db-file] [duckdb-executable]
+#
+# The duckdb cli has a nice editor for short queries, but not great for long or
+# multi-line queries.
+#
+# Run this in one window, edit a sql file in another window.  You can have
+# several queries/commands separated by semicolons.
+#
+# When you save the sql file, see the results here.
+#
+# examples:
+#   duckwatch mytest.sql mygolden.timedb  # specify both sql file and db-file
+#   duckwatch mytest.sql                  # fresh in-memory db only
+
+SQLFILE=${1:-/tmp/duckwatch.sql}
+DBFILE=${2:-:memory:}
+DUCKDB=${3:-duckdb}
+
+# different systems have different checksum programs
+for candidate in shasum md5 md5sum sum;do
+  which $candidate
+  if [[ $? -eq 0 ]]; then
+    SUM_PROGRAM=$candidate >/dev/null
+    break
+  fi
+done
+echo sum program: $SUM_PROGRAM
+
+exit
+
+while [[ ! -f $SQLFILE ]]; do
+  echo waiting for $SQLFILE
+  sleep 1
+done
+oldsum=$(${SUM_PROGRAM} $SQLFILE|awk '{print $1}')
+
+exit
+
+while true; do
+
+  clear
+  echo SQLFILE=$SQLFILE DBFILE=$DBFILE DUCKDB=$DUCKDB
+  echo --
+  cat $SQLFILE|$DUCKDB $DBFILE
+
+  # if you are using linux, this may be better
+  #     inotifywait -e modify $SQLFILE
+  while [[ $oldsum = $(${SUM_PROGRAM} $SQLFILE|awk '{print $1}') ]]; do
+    sleep .1 # YOLO!
+  done
+  oldsum=$(${SUM_PROGRAM} $SQLFILE|awk '{print $1}')
+
+done
