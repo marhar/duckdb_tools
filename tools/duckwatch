@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # duckwatch -- dumb "IDE-like" sql testing
-# usage: duckwatch [sql-file] [db-file] [duckdb-executable]
+# usage: duckwatch [-e] [sql-file] [db-file] [duckdb-executable]
 #
 # The duckdb cli has a nice editor for short queries, but not great for long or
 # multi-line queries.
@@ -15,42 +15,50 @@
 #   duckwatch mytest.sql mygolden.timedb  # specify both sql file and db-file
 #   duckwatch mytest.sql                  # fresh in-memory db only
 
+trap 'exit 0' INT
+
+if [[ $1. = -e. ]]; then
+    shift
+    START_EDITOR=1
+else
+    START_EDITOR=0
+fi
+
 SQLFILE=${1:-/tmp/duckwatch.sql}
 DBFILE=${2:-:memory:}
 DUCKDB=${3:-duckdb}
 
-# different systems have different checksum programs
-for candidate in shasum md5 md5sum sum;do
-  which $candidate
-  if [[ $? -eq 0 ]]; then
-    SUM_PROGRAM=$candidate >/dev/null
-    break
-  fi
-done
-echo sum program: $SUM_PROGRAM
+dosum () {
+  stat -sL $1|awk '{print $10}'
+}
 
-exit
+if [[ $START_EDITOR -eq 1 ]]; then
+    export SQLFILE
+    osascript -e 'tell app "Terminal" to do script "cd '$(pwd)'; vi '${SQLFILE}';exit"' 
+fi
 
 while [[ ! -f $SQLFILE ]]; do
   echo waiting for $SQLFILE
   sleep 1
 done
-oldsum=$(${SUM_PROGRAM} $SQLFILE|awk '{print $1}')
-
-exit
+oldsum=$(dosum $SQLFILE)
+sleep 1
 
 while true; do
 
   clear
   echo SQLFILE=$SQLFILE DBFILE=$DBFILE DUCKDB=$DUCKDB
   echo --
-  cat $SQLFILE|$DUCKDB $DBFILE
+  m4 ~/.time.m4 ~/.time.sql $SQLFILE|$DUCKDB $DBFILE
 
   # if you are using linux, this may be better
   #     inotifywait -e modify $SQLFILE
-  while [[ $oldsum = $(${SUM_PROGRAM} $SQLFILE|awk '{print $1}') ]]; do
-    sleep .1 # YOLO!
+  newsum=$(dosum $SQLFILE)
+  while [[ $oldsum = $newsum ]]; do
+    sleep 1
+    newsum=$(dosum $SQLFILE)
   done
-  oldsum=$(${SUM_PROGRAM} $SQLFILE|awk '{print $1}')
+  echo refreshing...
+  oldsum=$(dosum $SQLFILE)
 
 done
