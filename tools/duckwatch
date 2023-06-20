@@ -32,17 +32,23 @@ dosum () {
   stat -sL $1|awk '{print $10}'
 }
 
+touch $SQLFILE
+
+DB_FILE_TEST=$(od -c "$SQLFILE"|head -1|grep 'D   U   C   K'|wc -l)
+
+echo :$DB_FILE_TEST:
+
+if [[ $DB_FILE_TEST -eq 1 ]]; then
+    echo error: your sql file looks like duckdb file: $SQLFILE 1>&2
+    exit 1
+fi
+
 if [[ $START_EDITOR -eq 1 ]]; then
     export SQLFILE
     osascript -e 'tell app "Terminal" to do script "cd '$(pwd)'; vi '${SQLFILE}';exit"' 
 fi
 
-while [[ ! -f $SQLFILE ]]; do
-  echo waiting for $SQLFILE
-  sleep 1
-done
 oldsum=$(dosum $SQLFILE)
-sleep 1
 
 while true; do
 
