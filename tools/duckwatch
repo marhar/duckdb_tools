@@ -36,8 +36,6 @@ touch $SQLFILE
 
 DB_FILE_TEST=$(od -c "$SQLFILE"|head -1|grep 'D   U   C   K'|wc -l)
 
-echo :$DB_FILE_TEST:
-
 if [[ $DB_FILE_TEST -eq 1 ]]; then
     echo error: your sql file looks like duckdb file: $SQLFILE 1>&2
     exit 1
