@@ -34,10 +34,16 @@ dosum () {
 
 touch $SQLFILE
 
-DB_FILE_TEST=$(od -c "$SQLFILE"|head -1|grep 'D   U   C   K'|wc -l)
+SIG=$((cat $SQLFILE;echo xxxxxxxxxxxx)|
+	od -j 8 -N 4 -t x4|awk 'NR==1 {print $2}')
 
-if [[ $DB_FILE_TEST -eq 1 ]]; then
-    echo error: your sql file looks like duckdb file: $SQLFILE 1>&2
+if [[ $SIG = 4b435544 ]]; then # KCUD
+    echo error: your sql file looks like a duckdb file: $SQLFILE 1>&2
+    exit 1
+fi
+
+if [[ $SIG = 616d726f ]]; then # amro
+    echo error: your sql file looks like sqlite file: $SQLFILE 1>&2
     exit 1
 fi
 
@@ -53,7 +59,8 @@ while true; do
   clear
   echo SQLFILE=$SQLFILE DBFILE=$DBFILE DUCKDB=$DUCKDB
   echo --
-  m4 ~/.time.m4 ~/.time.sql $SQLFILE|$DUCKDB $DBFILE
+  ###m4 ~/.time.m4 ~/.time.sql $SQLFILE|$DUCKDB $DBFILE
+  $DUCKDB $DBFILE -no-stdin -init $SQLFILE
 
   # if you are using linux, this may be better
   #     inotifywait -e modify $SQLFILE
