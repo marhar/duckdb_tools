@@ -2,6 +2,15 @@
 
 Some handy things for duckdb.
 
+## obfuscate\_ddb
+
+Replaces all text fields in a database with hash strings.  The hash strings
+are consistent, so keys are preserved, etc.
+
+WARNING: OVERWRITES THE ORIGINAL DATA, USE THIS ONLY ON A COPY.
+
+usage:  obfuscate\_ddb.py database-file.ddb
+
 ## duckwatch -- type SQL in an editor and see the duckdb output.
 
 Type SQL into an editor, and see the output in another window.  Handy if you're
