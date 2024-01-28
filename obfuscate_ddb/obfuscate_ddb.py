@@ -29,7 +29,7 @@ def obfuscate_table(curs, table_name):
     for column_name, data_type in curs.execute(
         """
         select column_name, data_type from information_schema.columns
-        where table_name = $1 and data_type = 'VARCHAR'
+        where table_name = $1
         order by column_name
         """,
         (table_name,),
