@@ -29,7 +29,7 @@ else
 fi
 
 SQLFILE=${1:-/tmp/duckwatch.sql}
-PGURL=${2:-postgresql://localhost:5432/postgres}
+### assume started by pgscrath for now...PGURL=${2:-postgresql://localhost:5432/postgres}
 
 dosum () {
   stat -sL $1|awk '{print $10}'
@@ -60,10 +60,13 @@ oldsum=$(dosum $SQLFILE)
 while true; do
 
   clear
-  echo psql $PGURL -f $SQLFILE
+  TMPDB=temp_$RANDOM
+  echo psql -f $SQLFILE $TMPDB
   echo --
   ###m4 ~/.time.m4 ~/.time.sql $SQLFILE|$DUCKDB $DBFILE
-  psql $PGURL -f $SQLFILE
+  createdb $TMPDB
+  psql -f $SQLFILE $TMPDB
+  dropdb $TMPDB
 
   # if you are using linux, this may be better
   #     inotifywait -e modify $SQLFILE
