@@ -1,0 +1,26 @@
+#!/bin/bash
+# twodb - WIP execute SQL in both duckdb and postgres
+
+DOUT=/tmp/dout.$$.dboth
+POUT=/tmp/pout.$$.dboth
+trap "rm -f $DOUT $POUT" 0
+
+SQLFILE=$1
+duckdb <$SQLFILE |sed 's/ *$//' >$DOUT
+psql postgresql://localhost:5432/postgres -f $SQLFILE |
+	sed -E \
+	  -e 's/ *$//' \
+	  -e 's/^DROP TABLE$//; /^$/d' \
+	  -e 's/^CREATE TABLE$//; /^$/d' \
+	  -e 's/^INSERT [0-9]+ [0-9]+//; /^$/d' \
+	  -e 's/^\([0-9]+ rows\)$/&\n\n/' \
+	  >$POUT
+
+# note: gawk understands multibyte characters
+MX=$(wc -Lm $DOUT|gawk '{print $2}')
+paste -d '❖' $DOUT $POUT | gawk -v mx="$MX" -F '❖' '{
+    # Calculate the width of the first field considering multibyte characters
+    len = length($1)
+    # Print the first field left-aligned with the maximum width and the second field
+    printf "%-*s %s\n", mx, $1, $2
+}'

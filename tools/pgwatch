@@ -1,10 +1,7 @@
 #!/bin/sh
 #
-# duckwatch -- dumb "IDE-like" sql testing
-# usage: duckwatch [-e] [sql-file] [db-file] [duckdb-executable]
-#
-# The duckdb cli has a nice editor for short queries, but not great for long or
-# multi-line queries.
+# pgwatch -- dumb "IDE-like" sql testing
+# usage: pgwatch [-e] [sql-file] [db-file] [duckdb-executable]
 #
 # Run this in one window, edit a sql file in another window.  You can have
 # several queries/commands separated by semicolons.
@@ -12,8 +9,15 @@
 # When you save the sql file, see the results here.
 #
 # examples:
-#   duckwatch mytest.sql my.db  # specify both sql file and db-file
-#   duckwatch mytest.sql        # fresh in-memory db only
+#   pgwatch mytest.sql mygolden.timedb  # specify both sql file and db-file
+#   pgwatch mytest.sql                  # fresh in-memory db only
+#
+#   .echo on  ->  \set echo ALL
+#   .echo off ->  \unset echo
+#   .quit     ->  \quit
+#
+# IDEAS:
+# - create scratch db for each run, so each run is stateless as per duckdb
 
 trap 'exit 0' INT
 
@@ -25,8 +29,7 @@ else
 fi
 
 SQLFILE=${1:-/tmp/duckwatch.sql}
-DBFILE=${2:-:memory:}
-DUCKDB=${3:-duckdb}
+PGURL=${2:-postgresql://localhost:5432/postgres}
 
 dosum () {
   stat -sL $1|awk '{print $10}'
@@ -57,10 +60,10 @@ oldsum=$(dosum $SQLFILE)
 while true; do
 
   clear
-  echo SQLFILE=$SQLFILE DBFILE=$DBFILE DUCKDB=$DUCKDB
+  echo psql $PGURL -f $SQLFILE
   echo --
   ###m4 ~/.time.m4 ~/.time.sql $SQLFILE|$DUCKDB $DBFILE
-  $DUCKDB $DBFILE -no-stdin -init $SQLFILE
+  psql $PGURL -f $SQLFILE
 
   # if you are using linux, this may be better
   #     inotifywait -e modify $SQLFILE
