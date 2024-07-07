@@ -1,0 +1,9 @@
+#!/bin/sh
+# pgscratch -- create a scratch transient postgresql instance.
+
+D=$(mktemp -d)
+trap "rm -rf $D" INT
+echo D=$D
+initdb -D $D/data >/dev/null
+(sleep 1; echo;echo;echo psql postgresql://localhost:5432/postgres)&
+postgres -D $D/data -k $D
