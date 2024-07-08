@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+# sql_split -- split a file into ❖-delimited sql statements.
+
+import sys
+import sqlglot
+import subprocess
+import os
+
+def run_command(command):
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    return [x.strip() for x in process.stdout.readlines()]
+
+def concatenate_as_columns(array1, array2):
+    # Determine the maximum length of the strings in the first array
+    max_length = 0
+    if array1:
+        max_length = max(len(s) for s in array1)
+    
+    # Equalize lengths by appending empty strings
+    max_len = max(len(array1), len(array2))
+    array1.extend([''] * (max_len - len(array1)))
+    array2.extend([''] * (max_len - len(array2)))
+    
+    # Concatenate corresponding elements with appropriate padding for the first column
+    concatenated_array = [f"{array1[i].ljust(max_length)} {array2[i]}" for i in range(max_len)]
+    
+    return concatenated_array
+
+def main():
+
+    duckfile = f'/tmp/both.{os.getpid()}.db'
+    sqlfile = f'/tmp/both.{os.getpid()}.sql'
+    dfname = f'/tmp/both.{os.getpid()}.dlines'
+    pfname = f'/tmp/both.{os.getpid()}.plines'
+
+    final = list()
+
+    sql_text = open(sys.argv[1]).read()
+    statements = sqlglot.parse(sql_text)
+    for statement in statements:
+        cmd=str(statement)
+        final.append(cmd)
+        with open(sqlfile, 'w') as fd:
+            print(cmd, file=fd)
+        alld = run_command(f'duckdb {duckfile} <{sqlfile}')
+        allp = run_command(f'psql --quiet <{sqlfile}')
+        # if its SELECT, prepend ['','']
+        final.extend(concatenate_as_columns(alld,allp))
+    print('\n'.join(final))
+
+if __name__ == '__main__':
+    main()
