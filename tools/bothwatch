@@ -30,23 +30,25 @@ def main():
 
     duckfile = f'/tmp/both.{os.getpid()}.db'
     sqlfile = f'/tmp/both.{os.getpid()}.sql'
-    dfname = f'/tmp/both.{os.getpid()}.dlines'
-    pfname = f'/tmp/both.{os.getpid()}.plines'
 
-    final = list()
-
-    sql_text = open(sys.argv[1]).read()
-    statements = sqlglot.parse(sql_text)
-    for statement in statements:
-        cmd=str(statement)
-        final.append(cmd)
-        with open(sqlfile, 'w') as fd:
-            print(cmd, file=fd)
-        alld = run_command(f'duckdb {duckfile} <{sqlfile}')
-        allp = run_command(f'psql --quiet <{sqlfile}')
-        # if its SELECT, prepend ['','']
-        final.extend(concatenate_as_columns(alld,allp))
-    print('\n'.join(final))
+    try:
+        final = list()
+        sql_text = open(sys.argv[1]).read()
+        statements = sqlglot.parse(sql_text)
+        for statement in statements:
+            cmd=str(statement)
+            final.append(cmd)
+            with open(sqlfile, 'w') as fd:
+                print(cmd, file=fd)
+            alld = run_command(f'duckdb {duckfile} <{sqlfile}')
+            allp = run_command(f'psql --quiet <{sqlfile}')
+            # if its SELECT, prepend ['','']
+            final.extend(concatenate_as_columns(alld,allp))
+        print('\n'.join(final))
+    except Exception:
+        raise
+    finally:
+        os.system(f"rm -f {duckfile} {sqlfile}")
 
 if __name__ == '__main__':
     main()
