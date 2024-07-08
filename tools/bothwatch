@@ -1,18 +1,10 @@
 #!/usr/bin/env python
+# sql_split -- split a file into ❖-delimited sql statements.
+
 import sys
-from devtools import pprint
 import sqlglot
-import duckdb
-import psycopg2
 
-def split_sql(sql_text):
-    statements = sqlglot.parse(sql_text)
-    split_sql = [str(statement) for statement in statements]
-    return split_sql
-
-# Example usage:
 sql_text = open(sys.argv[1]).read()
-split_sql_statements = split_sql(sql_text)
-for stmt in split_sql_statements:
-    print('--')
-    print(stmt+';')
+statements = sqlglot.parse(sql_text)
+split_sql = [str(statement) for statement in statements]
+print(';❖'.join(split_sql)+';')
