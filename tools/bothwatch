@@ -1,10 +1,11 @@
 #!/usr/bin/env python
-# sql_split -- split a file into ❖-delimited sql statements.
+# bothwatch -- watch both duckdb and postgres.
 
+import os
+import random
+import subprocess
 import sys
 import sqlglot
-import subprocess
-import os
 
 def run_command(command):
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
@@ -41,12 +42,15 @@ def concatenate_as_columns(array1, array2):
     
     return concatenated_array
 
+
 def main():
 
     duckfile = f'/tmp/both.{os.getpid()}.db'
     sqlfile = f'/tmp/both.{os.getpid()}.sql'
+    tmpdb = f"tmp.{os.getpid()}.{random.randint(10000,99999)}"
 
     try:
+        os.system(f'createdb {tmpdb}')
         final = list()
         alld = list()
         allp = list()
@@ -58,7 +62,7 @@ def main():
             with open(sqlfile, 'w') as fd:
                 print(cmd, file=fd)
             alld.extend(run_command(f'duckdb {duckfile} <{sqlfile}'))
-            allp.extend(run_command(f'psql --quiet <{sqlfile}'))
+            allp.extend(run_command(f'psql --quiet {tmpdb} <{sqlfile}'))
             # if its SELECT, prepend ['','']
             alld,allp = equalize(alld, allp)
         final.extend(concatenate_as_columns(alld,allp))
@@ -66,6 +70,7 @@ def main():
     except Exception:
         raise
     finally:
+        os.system(f'dropdb {tmpdb}')
         os.system(f"rm -f {duckfile} {sqlfile}")
 
 if __name__ == '__main__':
