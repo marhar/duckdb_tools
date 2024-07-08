@@ -18,6 +18,10 @@
 #
 # IDEAS:
 # - create scratch db for each run, so each run is stateless as per duckdb
+#    CREATE DATABASE my_test_db;
+#    \c my_test_db;
+#    \c postgres;
+#    DROP DATABASE my_test_db;
 
 trap 'exit 0' INT
 
