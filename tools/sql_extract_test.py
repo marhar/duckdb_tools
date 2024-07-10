@@ -3,7 +3,7 @@
 import unittest
 from typing import List
 import textwrap
-from sql_extract import extract_sql_statements  # Replace 'your_module' with the actual module name
+from sql_extract import extract_sql_statements
 
 class TestExtractSQLStatements(unittest.TestCase):
 

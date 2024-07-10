@@ -6,6 +6,7 @@ import random
 import subprocess
 import sys
 import sqlglot
+from sql_extract import extract_sql_statements
 
 def run_command(command):
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE,
@@ -61,12 +62,13 @@ def main():
         stmtix = 1
         sql_text = open(sys.argv[1]).read()
         statements = sqlglot.parse(sql_text)
-        for statement in statements:
+        src_statements = extract_sql_statements(sql_text)
+
+        for statement, src_statement in zip(statements, src_statements):
             cmd=str(statement)
             alld.append(f'⟐{stmtix}')
             allp.append(f'⟐{stmtix}')
-            qqq[f'⟐{stmtix}'] = cmd
-            qqq[f'⟐{stmtix}'] = sqlglot.transpile(cmd, pretty=True)[0]
+            qqq[f'⟐{stmtix}'] = src_statement
             stmtix += 1
             with open(sqlfile, 'w') as fd:
                 print(cmd, file=fd)
@@ -79,7 +81,7 @@ def main():
         final.extend(concatenate_as_columns(alld,allp))
         for line in final:
             if line and line.split()[0] in qqq:
-                print(f'⟐{qqq[line.split()[0]]}')
+                print(f'{qqq[line.split()[0]]}')
             else:
                 print(line)
     except Exception:
