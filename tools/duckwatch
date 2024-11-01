@@ -61,6 +61,7 @@ while true; do
   echo --
   ###m4 ~/.time.m4 ~/.time.sql $SQLFILE|$DUCKDB $DBFILE
   $DUCKDB $DBFILE -no-stdin -init $SQLFILE
+  echo '(done)'
 
   # if you are using linux, this may be better
   #     inotifywait -e modify $SQLFILE
