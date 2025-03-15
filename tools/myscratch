@@ -3,16 +3,15 @@
 # maximally optimized for a single user on a personal box.
 # assumes you have installed postgres.
 
-D=/tmp/pgscratch.$$
+D=/tmp/myscratch.$$
 trap "rm -rf $D;echo;echo $D cleaned up, bye" INT
-initdb --no-instructions -D $D
+mysqld --initialize-insecure --datadir=$D
 (sleep 1; echo "
 
-THIS IS A SCRATCH POSTGRES INSTANCE.
+THIS IS A SCRATCH MYSQL INSTANCE.
 IT WILL BE DESTROYED WHEN YOU EXIT.
 
-psql postgresql://localhost/scratch
+mysql -u root
 
 ")&
-(sleep 1; createdb scratch)&
-postgres -D $D
+mysqld --datadir=$D --console
