@@ -26,6 +26,6 @@ mysql -u root
 "
 )&
 mysqld --defaults-file=$D/my.cnf --datadir=$D --console &
-MYSQL_PID=$!
-trap "kill -9 $MYSQL_PID;rm -rf $D;echo;echo $D cleaned up, bye" 0
-wait $MYSQL_PID
+MYPID=$!
+trap "kill $MYPID;kill -9 $MYPID;rm -rf $D;echo;echo $D cleaned up, bye" 0
+wait
