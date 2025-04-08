@@ -1,28 +1,32 @@
 #!/bin/sh
 # myscratch -- create a transient scratch postgres instance.
 # maximally optimized for a single user on a personal box.
-# assumes you have installed postgres.
+# assumes you have installed mysql.
 
 D=/tmp/myscratch.$$
 trap "rm -rf $D;echo;echo $D cleaned up, bye" 0
 
 mysqld --initialize-insecure --datadir=$D
 
+# customize your scratch instance here
 cat >$D/my.cnf <<.
 [mysqld]
 sql-mode="NO_ENGINE_SUBSTITUTION"
+[mysqld]
+secure_file_priv = "/tmp"
 .
 
 (sleep 2
-cat $D/my.cnf
+echo; cat $D/my.cnf
 echo "
 
-D=$D
 THIS IS A SCRATCH MYSQL INSTANCE.
 IT WILL BE DESTROYED WHEN YOU EXIT.
 
+D=$D
+
 login with:
-mysql -u root
+mysql -u root mysql
 "
 )&
 mysqld --defaults-file=$D/my.cnf --datadir=$D --console &
