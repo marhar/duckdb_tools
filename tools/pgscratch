@@ -2,17 +2,22 @@
 # pgscratch -- create a transient scratch postgres instance.
 # maximally optimized for a single user on a personal box.
 # assumes you have installed postgres.
+# usage: pgscratch [port]
 
 D=/tmp/pgscratch.$$
-trap "rm -rf $D;echo;echo $D cleaned up, bye" INT
+PORT=${1:-5432}
+CONN_STRING="postgresql://localhost$([ "$PORT" != "5432" ] && echo ":$PORT")/scratch"
+
+trap "rm -rf $D;echo;echo $D cleaned up, bye" EXIT
+
 initdb --no-instructions -D $D
 (sleep 1; echo "
 
 THIS IS A SCRATCH POSTGRES INSTANCE.
 IT WILL BE DESTROYED WHEN YOU EXIT.
 
-psql postgresql://localhost/scratch
+psql $CONN_STRING
 
 ")&
-(sleep 1; createdb scratch)&
-postgres -D $D
+(sleep 1; createdb -p $PORT scratch)&
+postgres -p $PORT -D $D
