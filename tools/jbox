@@ -1,0 +1,73 @@
+#!/bin/bash
+
+D=$(mktemp -d)
+F=$D/f.db
+
+cleanup() {
+    rm -rf $D
+    echo -e "\nRestoring terminal settings..."
+    stty echo icanon  # Restore normal terminal behavior
+    echo "Exiting..."
+    exit 0
+}
+
+display() {
+    local cols=$(tput cols)
+    local lines=$(tput lines)
+    duckdb -c "SELECT * from b;SELECT * from a;" $F
+}
+
+handle_key() {
+    local key="$1"
+    case "$key" in
+        "1")
+            echo "Command 1 executed!"
+            # Add your command 1 logic here
+            ;;
+        "2")
+            echo "Command 2 executed!"
+            # Add your command 2 logic here
+            ;;
+        "3")
+            echo "Command 3 executed!"
+            # Add your command 3 logic here
+            ;;
+        "q"|"Q")
+            echo "Quit command received"
+            cleanup
+            ;;
+        *)
+            echo "Unknown key: '$key' (Press 1, 2, 3, or q to quit)"
+            ;;
+    esac
+}
+
+trap cleanup INT TERM
+trap display WINCH
+
+stty -echo -icanon min 1 time 0
+
+pbpaste
+echo ''
+
+pbpaste | duckdb -c "
+  CREATE TABLE a AS SELECT columns(*)::text FROM read_json('/dev/stdin');
+
+
+  CREATE TABLE b AS
+  UNPIVOT (
+    select * FROM a LIMIT 1
+  )
+  ON COLUMNS(*)
+  INTO
+    NAME name
+    VALUE value
+  ORDER BY name;
+" $F
+
+display
+
+while true; do
+    IFS= read -r -n1 char
+    handle_key "$char"
+done

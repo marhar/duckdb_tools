@@ -1,0 +1,17 @@
+#!/bin/bash
+
+pbpaste >/tmp/junk.json
+echo >>/tmp/junk.json
+cat /tmp/junk.json
+duckdb -c "
+UNPIVOT (
+select columns(*)::text from read_json('/tmp/junk.json') limit 1
+)
+ON COLUMNS(*)
+INTO
+    NAME name
+    VALUE value
+ORDER BY name;
+"
+duckdb -c "select * from read_json('/tmp/junk.json')"
+rm -f /tmp/junk.json
