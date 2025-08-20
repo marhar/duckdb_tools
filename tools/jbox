@@ -3,11 +3,56 @@
 D=$(mktemp -d)
 F=$D/f.db
 
+resize_window() {
+    local width_pixels="$1"
+    local height_pixels="$2"
+    
+    if [[ -z "$width_pixels" || -z "$height_pixels" ]]; then
+        echo "Usage: resize_window <width_pixels> <height_pixels>"
+        return 1
+    fi
+    
+    # Get current position (top-left corner)
+    current_bounds=$(osascript -e 'tell application "Terminal" to get bounds of front window')
+    left=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f1 | xargs)
+    top=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f2 | xargs)
+    
+    # Calculate new bounds
+    new_right=$((left + width_pixels))
+    new_bottom=$((top + height_pixels))
+    
+    # Apply new size
+    osascript -e "tell application \"Terminal\" to set bounds of front window to {$left, $top, $new_right, $new_bottom}"
+}
+
+# Function to adjust size incrementally
+adjust_window() {
+    local width_change="$1"
+    local height_change="$2"
+    
+    # Get current bounds
+    current_bounds=$(osascript -e 'tell application "Terminal" to get bounds of front window')
+    left=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f1 | xargs)
+    top=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f2 | xargs)
+    right=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f3 | xargs)
+    bottom=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f4 | xargs)
+    
+    # Calculate new bounds
+    new_right=$((right + width_change))
+    new_bottom=$((bottom + height_change))
+    
+    # Apply adjustment
+    osascript -e "tell application \"Terminal\" to set bounds of front window to {$left, $top, $new_right, $new_bottom}"
+    
+    local current_width=$((right - left))
+    local current_height=$((bottom - top))
+    local new_width=$((new_right - left))
+    local new_height=$((new_bottom - top))
+}
+
 cleanup() {
     rm -rf $D
-    echo -e "\nRestoring terminal settings..."
     stty echo icanon  # Restore normal terminal behavior
-    echo "Exiting..."
     exit 0
 }
 
@@ -15,6 +60,7 @@ display() {
     local cols=$(tput cols)
     local lines=$(tput lines)
     duckdb -c "SELECT * from b;SELECT * from a;" $F
+    duckdb -noheader -ascii -c "SELECT string_agg(column_name, ',' ORDER BY ordinal_position) z FROM information_schema.columns WHERE table_schema = 'main'  AND table_name = 'a';" $F
 }
 
 handle_key() {
@@ -36,6 +82,12 @@ handle_key() {
             echo "Quit command received"
             cleanup
             ;;
+        "[")
+            adjust_window -100 0
+            ;;
+        "]")
+            adjust_window 100 0
+            ;;
         *)
             echo "Unknown key: '$key' (Press 1, 2, 3, or q to quit)"
             ;;
@@ -47,8 +99,7 @@ trap display WINCH
 
 stty -echo -icanon min 1 time 0
 
-pbpaste
-echo ''
+pbpaste; echo ''
 
 pbpaste | duckdb -c "
   CREATE TABLE a AS SELECT columns(*)::text FROM read_json('/dev/stdin');
