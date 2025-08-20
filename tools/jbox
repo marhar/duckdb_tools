@@ -1,124 +1,105 @@
 #!/bin/bash
 
-D=$(mktemp -d)
-F=$D/f.db
-
-resize_window() {
-    local width_pixels="$1"
-    local height_pixels="$2"
-    
-    if [[ -z "$width_pixels" || -z "$height_pixels" ]]; then
-        echo "Usage: resize_window <width_pixels> <height_pixels>"
-        return 1
-    fi
-    
-    # Get current position (top-left corner)
-    current_bounds=$(osascript -e 'tell application "Terminal" to get bounds of front window')
-    left=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f1 | xargs)
-    top=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f2 | xargs)
-    
-    # Calculate new bounds
-    new_right=$((left + width_pixels))
-    new_bottom=$((top + height_pixels))
-    
-    # Apply new size
-    osascript -e "tell application \"Terminal\" to set bounds of front window to {$left, $top, $new_right, $new_bottom}"
+display() {
+  # echo font:$(osascript -e 'tell application "Terminal" to return font size of front window')
+  duckdb -c "
+    SELECT * from b;SELECT * from a;
+  " $F
+  duckdb -noheader -ascii -c "
+    SELECT string_agg(column_name, ',' ORDER BY ordinal_position) z
+    FROM information_schema.columns
+    WHERE table_schema = 'main' AND table_name = 'a';
+  " $F
 }
 
-# Function to adjust size incrementally
-adjust_window() {
-    local width_change="$1"
-    local height_change="$2"
-    
-    # Get current bounds
-    current_bounds=$(osascript -e 'tell application "Terminal" to get bounds of front window')
-    left=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f1 | xargs)
-    top=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f2 | xargs)
-    right=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f3 | xargs)
-    bottom=$(echo "$current_bounds" | sed 's/[{}]//g' | cut -d',' -f4 | xargs)
-    
-    # Calculate new bounds
-    new_right=$((right + width_change))
-    new_bottom=$((bottom + height_change))
-    
-    # Apply adjustment
-    osascript -e "tell application \"Terminal\" to set bounds of front window to {$left, $top, $new_right, $new_bottom}"
-    
-    local current_width=$((right - left))
-    local current_height=$((bottom - top))
-    local new_width=$((new_right - left))
-    local new_height=$((new_bottom - top))
+load_json () {
+  pbpaste | duckdb -c "
+    CREATE OR REPLACE TABLE a AS SELECT columns(*)::text FROM read_json('/dev/stdin');
+    CREATE TABLE b AS
+    UNPIVOT (
+      select * FROM a LIMIT 1
+    )
+    ON COLUMNS(*)
+    INTO
+      NAME name
+      VALUE value
+    ORDER BY name;
+  " $F
+}
+
+load_csv () {
+  pbpaste | duckdb -c "
+    CREATE OR REPLACE TABLE a AS SELECT columns(*)::text FROM read_csv('/dev/stdin');
+    CREATE TABLE b AS
+    UNPIVOT (
+      select * FROM a LIMIT 1
+    )
+    ON COLUMNS(*)
+    INTO
+      NAME name
+      VALUE value
+    ORDER BY name;
+  " $F
+}
+
+font_size() {
+    local delta=$1
+    if [[ $delta == "reset" ]]; then
+	osascript -e 'tell application "Terminal" to set font size of front window to 12'
+    elif [[ $delta == "up" ]]; then
+	osascript -e 'tell application "Terminal" to set font size of front window to (font size of front window) + 1'
+    elif [[ $delta == "down" ]]; then
+	osascript -e 'tell application "Terminal" to set font size of front window to (font size of front window) - 1'
+    fi
 }
 
 cleanup() {
     rm -rf $D
-    stty echo icanon  # Restore normal terminal behavior
-    exit 0
+    stty echo icanon
 }
 
-display() {
-    local cols=$(tput cols)
-    local lines=$(tput lines)
-    duckdb -c "SELECT * from b;SELECT * from a;" $F
-    duckdb -noheader -ascii -c "SELECT string_agg(column_name, ',' ORDER BY ordinal_position) z FROM information_schema.columns WHERE table_schema = 'main'  AND table_name = 'a';" $F
-}
+#----------------------------------------------------
 
-handle_key() {
-    local key="$1"
-    case "$key" in
-        "1")
-            echo "Command 1 executed!"
-            # Add your command 1 logic here
-            ;;
-        "2")
-            echo "Command 2 executed!"
-            # Add your command 2 logic here
-            ;;
-        "3")
-            echo "Command 3 executed!"
-            # Add your command 3 logic here
-            ;;
-        "q"|"Q")
-            echo "Quit command received"
-            cleanup
-            ;;
-        "[")
-            adjust_window -100 0
-            ;;
-        "]")
-            adjust_window 100 0
-            ;;
-        *)
-            echo "Unknown key: '$key' (Press 1, 2, 3, or q to quit)"
-            ;;
-    esac
-}
+D=$(mktemp -d)
+F=$D/f.db
 
-trap cleanup INT TERM
+trap cleanup 0
 trap display WINCH
 
 stty -echo -icanon min 1 time 0
 
-pbpaste; echo ''
-
-pbpaste | duckdb -c "
-  CREATE TABLE a AS SELECT columns(*)::text FROM read_json('/dev/stdin');
-
-
-  CREATE TABLE b AS
-  UNPIVOT (
-    select * FROM a LIMIT 1
-  )
-  ON COLUMNS(*)
-  INTO
-    NAME name
-    VALUE value
-  ORDER BY name;
-" $F
-
+load_json
 display
 
 while true; do
     IFS= read -r -n1 char
-    handle_key "$char"
+    case "$char" in
+        "j")
+            load_json
+            display
+            ;;
+        "c")
+            load_csv
+            display
+            ;;
+        "-")
+            font_size down
+            osascript -e 'tell application "System Events" to keystroke "-" using command down'
+            ;;
+        "=")
+            font_size up
+            osascript -e 'tell application "System Events" to keystroke "+" using command down'
+            ;;
+        "0")
+            font_size reset
+            osascript -e 'tell application "System Events" to keystroke "0" using command down'
+            ;;
+        "q")
+            exit 0
+            ;;
+        *)
+            echo :$char:
+            echo "Press 'j' to load JSON, 'c' to load CSV, 'q' to quit, or '?' for help."
+            ;;
+    esac
 done
