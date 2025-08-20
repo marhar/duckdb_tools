@@ -1,4 +1,17 @@
 #!/bin/bash
+HELP="\
+usage: jbox
+Have some json or csv in the clipboard, then run this script.
+Interactive commands:
+  j: load JSON from clipboard
+  c: load CSV from clipboard
+  -: decrease font size
+  =: increase font size
+  0: reset font size to default
+  q: quit
+"
+# TODO: add history
+#    0 = go to most recent; 1 = go to next most recent; 2 = go to next most recent; etc.
 
 display() {
   # echo font:$(osascript -e 'tell application "Terminal" to return font size of front window')
@@ -12,10 +25,9 @@ display() {
   " $F
 }
 
-load_json () {
-  pbpaste | duckdb -c "
-    CREATE OR REPLACE TABLE a AS SELECT columns(*)::text FROM read_json('/dev/stdin');
-    CREATE TABLE b AS
+load_common() {
+  duckdb -c "
+    CREATE OR REPLACE TABLE b AS
     UNPIVOT (
       select * FROM a LIMIT 1
     )
@@ -25,6 +37,14 @@ load_json () {
       VALUE value
     ORDER BY name;
   " $F
+}
+
+load_json () {
+  pbpaste | duckdb -c "
+    CREATE OR REPLACE TABLE a AS SELECT columns(*)::text FROM read_json('/dev/stdin');
+  " $F
+  load_common
+
 }
 
 load_csv () {
@@ -84,21 +104,20 @@ while true; do
             ;;
         "-")
             font_size down
-            osascript -e 'tell application "System Events" to keystroke "-" using command down'
             ;;
         "=")
             font_size up
-            osascript -e 'tell application "System Events" to keystroke "+" using command down'
             ;;
         "0")
             font_size reset
-            osascript -e 'tell application "System Events" to keystroke "0" using command down'
             ;;
         "q")
             exit 0
             ;;
+        "?")
+            echo "$HELP"
+            ;;
         *)
-            echo :$char:
             echo "Press 'j' to load JSON, 'c' to load CSV, 'q' to quit, or '?' for help."
             ;;
     esac
