@@ -9,6 +9,15 @@ Interactive commands:
   =: increase font size
   0: reset font size to default
   q: quit
+  ESC: escape key
+  ↑: up arrow
+  ↓: down arrow
+  ←: left arrow
+  →: right arrow
+  Page Up/Down: scroll data
+  Home/End: go to start/end of data
+  Tab: navigate between views
+  Enter: select/drill down
 "
 # TODO: add history
 #    0 = go to most recent; 1 = go to next most recent; 2 = go to next most recent; etc.
@@ -91,8 +100,33 @@ stty -echo -icanon min 1 time 0
 load_json
 display
 
+read_key() {
+    IFS= read -r -n1 key
+    if [[ $key == $'\e' ]]; then
+        read -r -n2 -t 0.001 rest
+        if [[ -z "$rest" ]]; then
+            # If no additional characters were read, it's a standalone ESC key
+            key="ESC"
+        else
+            key+="$rest"
+            # For some sequences, we need to read additional bytes
+            if [[ "$rest" == "[" ]]; then
+                # It might be Home, End, Page Up/Down which have longer sequences
+                read -r -n1 -t 0.001 extra
+                if [[ "$extra" == [0-9] ]]; then
+                    key+="$extra"
+                    # Read the final character (e.g. for Home key: \e[1~)
+                    read -r -n1 -t 0.001 final
+                    key+="$final"
+                fi
+            fi
+        fi
+    fi
+    echo "$key"
+}
+
 while true; do
-    IFS= read -r -n1 char
+    char=$(read_key)
     case "$char" in
         "j")
             load_json
@@ -117,7 +151,61 @@ while true; do
         "?")
             echo "$HELP"
             ;;
+        "ESC")
+            echo "ESC key pressed"
+            ;;
+        $'\e[A')
+            echo "Up arrow pressed"
+            ;;
+        $'\e[B')
+            echo "Down arrow pressed"
+            ;;
+        $'\e[C')
+            echo "Right arrow pressed"
+            ;;
+        $'\e[D')
+            echo "Left arrow pressed"
+            ;;
+        $'\e[5~')
+            echo "Page Up pressed"
+            ;;
+        $'\e[6~')
+            echo "Page Down pressed"
+            ;;
+        $'\e[H')
+            echo "Home pressed"
+            ;;
+        $'\e[F')
+            echo "End pressed"
+            ;;
+        $'\e[1~')
+            echo "Home pressed (alternate code)"
+            ;;
+        $'\e[4~')
+            echo "End pressed (alternate code)"
+            ;;
+        $'\e[3~')
+            echo "Delete pressed"
+            ;;
+        $'\t')
+            echo "Tab pressed"
+            ;;
+        $'\n')
+            echo "Enter pressed"
+            ;;
         *)
+            # Debug output for unrecognized keys
+            if [[ "$char" == $'\e'* ]]; then
+                # For escape sequences, show the hex codes
+                hex_repr=$(printf "%s" "$char" | hexdump -v -e '/1 "0x%02X "')
+                echo "Unrecognized key sequence: $hex_repr"
+            elif [[ $(printf "%d" "'$char'") -lt 32 ]]; then
+                # For control characters
+                dec_val=$(printf "%d" "'$char'")
+                echo "Control character: ^$(printf \\$(printf '%03o' $((dec_val + 64))))"
+            else
+                echo "Unrecognized key: '$char'"
+            fi
             echo "Press 'j' to load JSON, 'c' to load CSV, 'q' to quit, or '?' for help."
             ;;
     esac
