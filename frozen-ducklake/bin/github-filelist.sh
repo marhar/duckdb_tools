@@ -27,8 +27,5 @@ URL=$1
 REPO=$(duckdb -noheader -ascii -c "SELECT array_to_string((split('$URL', '/'))[4:5], '/');")
 DPATH=$(duckdb -noheader -ascii -c "SELECT array_to_string((split('$URL', '/'))[8:], '/');")
 
-(
-# CSV column header
-echo full_path
-f $REPO $DPATH
-) >tmp_files.csv
+echo full_path >tmp_files.csv
+f $REPO $DPATH >>tmp_files.csv
