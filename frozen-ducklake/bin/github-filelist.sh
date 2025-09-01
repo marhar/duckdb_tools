@@ -10,9 +10,6 @@ if [[ $# -ne 1 ]]; then
   exit 1
 fi
 
-# CSV column header
-echo full_path
-
 f() {
   CPATH=https://api.github.com/repos/$REPO/contents/$DPATH
   curl -s -H "Authorization: token $GH_RO_TOKEN" $CPATH > $TMPJ
@@ -30,4 +27,8 @@ URL=$1
 REPO=$(duckdb -noheader -ascii -c "SELECT array_to_string((split('$URL', '/'))[4:5], '/');")
 DPATH=$(duckdb -noheader -ascii -c "SELECT array_to_string((split('$URL', '/'))[8:], '/');")
 
+(
+# CSV column header
+echo full_path
 f $REPO $DPATH
+) >tmp_files.csv
