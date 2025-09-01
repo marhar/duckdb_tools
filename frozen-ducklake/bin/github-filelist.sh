@@ -11,7 +11,7 @@ if [[ $# -ne 1 ]]; then
 fi
 
 # CSV column header
-echo filepath
+echo full_path
 
 f() {
   CPATH=https://api.github.com/repos/$REPO/contents/$DPATH
