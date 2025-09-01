@@ -10,9 +10,14 @@ if [[ $# -ne 1 ]]; then
   exit 1
 fi
 
+# CSV column header
+echo filepath
+
 f() {
   CPATH=https://api.github.com/repos/$REPO/contents/$DPATH
-  curl -s $CPATH > $TMPJ
+  curl -s -H "Authorization: token $GH_RO_TOKEN" $CPATH > $TMPJ
+  #curl -s $CPATH > $TMPJ
+  
 
   # if row is a directory recurse into it, else print the download_url if it's a parquet file
   for DPATH in $(duckdb -noheader -ascii -c "SELECT path FROM '$TMPJ' WHERE type='dir' ORDER BY name;"); do
