@@ -2,7 +2,7 @@
 # sample_workflow.sh -- showing how to create and use a frozen DuckLake
 
 ./github-filelist.sh https://github.com/marhar/duckdb_tools/tree/main/frozen-ducklake/examples/space_missions/data
-duckdb -f create-import-scripts.sh
+duckdb -f create-import-scripts.sql
 ls -l tmp*
 
 cat <<. | duckdb
