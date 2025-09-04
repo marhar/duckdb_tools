@@ -19,11 +19,11 @@ process() {
   #curl -s $CPATH > $TMPJ
   
 
-  # if row is a directory recurse into it, else print the download_url if it's a parquet file
+  # print parquet files, then recurse into all subdirs
+  duckdb -noheader -ascii -c "select download_url from '$TMPJ' where type='file' and name like '%.parquet' ORDER BY name;"
   for DPATH in $(duckdb -noheader -ascii -c "SELECT path FROM '$TMPJ' WHERE type='dir' ORDER BY name;"); do
     process $REPO $DPATH
   done
-  duckdb -noheader -ascii -c "select download_url from '$TMPJ' where type='file' and name like '%.parquet' ORDER BY name;"
 }
 
 URL=$1
