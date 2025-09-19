@@ -1,32 +1,33 @@
 #!/bin/bash
-# Download and install the latest DuckDB CLI.
-# Handy for initially setting up a new docker.
+# download_fresh_duckdb.sh - downloads and configures duckdb cli
+# - downloads the latest duckdb cli.
+# - symlinks to $HOME/bin
+# - installs favorite extensions.
 
-case $(uname -s) in
-    Linux)     OSPART=linux-amd64 ;;
-    Darwin)    OSPART=osx-universal ;;
-esac
+curl https://install.duckdb.org | sh
 
-VERSION=v1.1.2
-DUCKDB=./duckdb
-FNAME=duckdb_cli-$OSPART.zip
-URL=https://github.com/duckdb/duckdb/releases/download/$VERSION/$FNAME
+echo '--------------------------------'
+echo configuring local duckdb
+echo '--------------------------------'
+rm -f ~/bin/duckdb
+ln -s ~/.duckdb/cli/latest/duckdb ~/bin/duckdb
 
-echo URL: $URL
-rm -f $FNAME $DUCKDB
-wget -q $URL
-if [ $? -ne 0 ]; then
-    echo could not fetch $FNAME
-    exit 1
-fi
-unzip -q $FNAME
-rm $FNAME
-chmod +x $DUCKDB
-cat <<. |$DUCKDB
+echo duckdb is:
+ls -l $(which duckdb)
+
+cat <<. |duckdb
+
+INSTALL ducklake;
 INSTALL httpfs;
 INSTALL iceberg;
 INSTALL mysql;
 INSTALL postgres;
+INSTALL spatial;
+INSTALL crypto from community;
+INSTALL gsheets from community;
+INSTALL textplot FROM community;
+
+SELECT version() as "DuckDB Version";
 SELECT extension_name, extension_version
 FROM duckdb_extensions()
 WHERE install_path IS NOT NULL AND install_path NOT IN ('(BUILT-IN)','')
