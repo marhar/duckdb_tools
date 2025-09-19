@@ -15,7 +15,7 @@ FROM 'tmp_files.csv';
 
 .once tmp_create_tables.sql
 SELECT
-  printf('CREATE TABLE %s.%s AS SELECT * FROM read_parquet(''%s'') WHERE 1<>1;',
+  printf('CREATE TABLE %s.%s AS SELECT * FROM read_parquet(''%s'') WITH NO DATA;',
     db_name, table_name, min(full_path)) AS create_statement
 FROM frozen_parms
 GROUP BY db_name, table_name
