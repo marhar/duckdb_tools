@@ -27,6 +27,7 @@ INSTALL spatial;
 INSTALL vss;
 INSTALL crypto from community;
 INSTALL gsheets from community;
+INSTALL h3 FROM community;
 INSTALL textplot FROM community;
 INSTALL gcs FROM community;
 
