@@ -7,17 +7,36 @@
 D=/tmp/pgscratch.$$
 PORT=${1:-5432}
 CONN_STRING="postgresql://localhost$([ "$PORT" != "5432" ] && echo ":$PORT")/scratch"
+KV_STRING="host=localhost port=$PORT dbname=scratch"
+PGUSER_NAME=$(id -un)
 
-trap "rm -rf $D;echo;echo $D cleaned up, bye" EXIT
+trap "rm -rf $D;echo;echo data directory $D cleaned up, bye" EXIT
 
 initdb --no-instructions -D $D
 (sleep 1; echo "
+┌──────────────────────────────────────┐
+│ THIS IS A SCRATCH POSTGRES INSTANCE. │
+│ IT WILL BE DESTROYED WHEN YOU EXIT.  │
+│ Useful information follows.          │
+└──────────────────────────────────────┘
 
-THIS IS A SCRATCH POSTGRES INSTANCE.
-IT WILL BE DESTROYED WHEN YOU EXIT.
+pg version: $(initdb --version)
+
+port: $PORT
+user: $PGUSER_NAME
+password: (none)
+
+connect string: $CONN_STRING
+connect string: $KV_STRING
 
 psql $CONN_STRING
+psql \"$KV_STRING\"
 
-")&
+duckdb -cmd \"ATTACH '$CONN_STRING' AS scratch (TYPE postgres); USE scratch;\"
+duckdb -cmd \"ATTACH '$KV_STRING' AS scratch (TYPE postgres); USE scratch;\"
+
+┌───────────────────┐
+│ Press ^C to quit. │
+└───────────────────┘")&
 (sleep 1; createdb -p $PORT scratch)&
 postgres -p $PORT -D $D
